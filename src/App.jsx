@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { calculateTax, BRACKET_COLORS, COUNTRIES, REGIONS } from './taxData';
 import { useInView } from './useInView';
 import { useCountUp } from './useCountUp';
@@ -13,14 +13,13 @@ const PRESETS = [
   { label: '500K', value: 500000 },
 ];
 
-/* ── Deterministic particles (no Math.random = stable renders) ── */
+/* ── Deterministic particles ── */
 const PARTICLE_POOL = [
   '$','£','€','₹','¥','💰','🪙','💵','📈','💳','🏦','💹','🤑','📊',
   '$','€','₹','💰','🪙','💵','📈','💳','$','£',
 ];
 const PARTICLES = PARTICLE_POOL.map((sym, i) => ({
-  id: i,
-  symbol: sym,
+  id: i, symbol: sym,
   left: `${(i * 19 + 3) % 94 + 2}%`,
   delay: `${(i * 0.83) % 11}s`,
   duration: `${11 + (i * 1.4) % 11}s`,
@@ -29,12 +28,32 @@ const PARTICLES = PARTICLE_POOL.map((sym, i) => ({
 }));
 
 export default function App() {
-  const [countryCode, setCountryCode] = useState('us');
-  const [income, setIncome]           = useState('');
+  const [countryCode, setCountryCode]   = useState('us');
+  const [income, setIncome]             = useState('');
   const [filingStatus, setFilingStatus] = useState('single');
-  const [dark, setDark] = useState(() => window.matchMedia('(prefers-color-scheme: dark)').matches);
+  const [dark, setDark]                 = useState(() => window.matchMedia('(prefers-color-scheme: dark)').matches);
+  const [hoveredBracket, setHoveredBracket] = useState(null);
+  const [shareCopied, setShareCopied]   = useState(false);
 
   const country = COUNTRIES[countryCode];
+
+  // URL sync — read on mount
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search);
+    const urlCountry = p.get('c');
+    const urlIncome  = p.get('i');
+    const urlStatus  = p.get('s');
+    if (urlCountry && COUNTRIES[urlCountry]) {
+      const defaultStatus = Object.keys(COUNTRIES[urlCountry].statuses)[0];
+      setCountryCode(urlCountry);
+      setFilingStatus(urlStatus || defaultStatus);
+      if (urlIncome && Number(urlIncome) > 0) {
+        setIncome(Number(urlIncome).toLocaleString(COUNTRIES[urlCountry].locale));
+      }
+    } else if (urlIncome && Number(urlIncome) > 0) {
+      setIncome(Number(urlIncome).toLocaleString('en-US'));
+    }
+  }, []);
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', dark);
@@ -67,6 +86,32 @@ export default function App() {
     style:'currency', currency:country.currency, maximumFractionDigits:0,
   }).formatToParts(0).find(p => p.type === 'currency')?.value ?? '$';
 
+  // Slider max — highest finite bracket * 1.5, min 200 000
+  const sliderMax = useMemo(() => {
+    const real = result.breakdown.filter(b => b.max !== Infinity);
+    const top  = real.length ? real[real.length - 1].max : 500000;
+    return Math.max(top, numericIncome, 200000);
+  }, [result.breakdown, numericIncome]);
+
+  // URL sync — write on change
+  useEffect(() => {
+    if (!numericIncome) {
+      history.replaceState(null, '', window.location.pathname);
+      return;
+    }
+    const p = new URLSearchParams({ c: countryCode, i: numericIncome, s: filingStatus });
+    history.replaceState(null, '', '?' + p.toString());
+  }, [numericIncome, countryCode, filingStatus]);
+
+  const handleShare = () => {
+    navigator.clipboard.writeText(window.location.href).then(() => {
+      setShareCopied(true);
+      setTimeout(() => setShareCopied(false), 2000);
+    });
+  };
+
+  const handlePrint = () => window.print();
+
   return (
     <div className="min-h-screen bg-[#f8f7ff] dark:bg-[#07080f] text-gray-900 dark:text-gray-100 transition-colors duration-300 overflow-x-hidden">
 
@@ -82,7 +127,19 @@ export default function App() {
             </div>
             <span className="font-bold tracking-tight gradient-text text-base">Tax Bracket Visualizer</span>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            {hasIncome && (
+              <>
+                <button onClick={handleShare}
+                  className="hidden sm:flex items-center gap-1.5 text-xs font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-700/60 rounded-lg px-3 py-1.5 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-all">
+                  {shareCopied ? '✓ Copied!' : '🔗 Share'}
+                </button>
+                <button onClick={handlePrint}
+                  className="hidden sm:flex items-center gap-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400 bg-white/70 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg px-3 py-1.5 hover:bg-white dark:hover:bg-white/10 transition-all">
+                  🖨️ Print
+                </button>
+              </>
+            )}
             <span className="hidden sm:flex items-center gap-1.5 text-xs font-semibold text-slate-400 dark:text-slate-500 bg-white/70 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg px-2.5 py-1">
               {country.flag} {country.name} · {country.year}
             </span>
@@ -95,7 +152,7 @@ export default function App() {
       </header>
 
       {/* ── Hero ──────────────────────────────────────── */}
-      <section className="hero-mesh noise relative min-h-[90vh] flex flex-col items-center justify-center px-4 py-20 overflow-hidden">
+      <section className="hero-mesh noise relative min-h-[88vh] flex flex-col items-center justify-center px-4 py-14 overflow-hidden">
 
         {/* Blobs */}
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
@@ -119,19 +176,13 @@ export default function App() {
         <div className="pointer-events-none absolute inset-0 overflow-hidden z-0">
           {PARTICLES.map(p => (
             <span key={p.id} className="particle select-none"
-              style={{
-                left: p.left,
-                fontSize: p.size,
-                opacity: p.opacity,
-                animationDuration: p.duration,
-                animationDelay: p.delay,
-              }}>
+              style={{ left: p.left, fontSize: p.size, opacity: p.opacity, animationDuration: p.duration, animationDelay: p.delay }}>
               {p.symbol}
             </span>
           ))}
         </div>
 
-        <div className="relative z-10 w-full max-w-2xl space-y-5">
+        <div className="relative z-10 w-full max-w-2xl space-y-4">
           {/* Badge + heading */}
           <div className="text-center space-y-3">
             <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/40 border border-indigo-200 dark:border-indigo-700/60 rounded-full px-4 py-1.5">
@@ -148,10 +199,11 @@ export default function App() {
           {/* Country picker */}
           <CountryPicker countryCode={countryCode} onChange={handleCountryChange} />
 
-          {/* Income + filing status */}
-          <div className="card p-6 space-y-5">
+          {/* Income input card */}
+          <div className="card p-5 space-y-4">
+            {/* Input */}
             <div>
-              <label className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.16em] mb-2.5">
+              <label className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.16em] mb-2">
                 Taxable Income · {country.currency}
               </label>
               <div className="relative">
@@ -162,21 +214,42 @@ export default function App() {
                     setIncome(raw ? Number(raw).toLocaleString(country.locale) : '');
                   }}
                   placeholder={country.inputPlaceholder}
-                  className="w-full pl-10 pr-4 py-4 rounded-2xl border-2 border-slate-200 dark:border-slate-700/60 bg-slate-50 dark:bg-white/5 text-gray-900 dark:text-white focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400 text-2xl font-mono transition-colors placeholder:text-slate-300 dark:placeholder:text-slate-700"
+                  className="w-full pl-10 pr-4 py-4 rounded-2xl border-2 border-slate-200 dark:border-slate-700/60 bg-slate-50 dark:bg-white/5 text-gray-900 dark:text-white focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400 focus:shadow-[0_0_0_4px_rgba(99,102,241,0.12)] text-2xl font-mono transition-all placeholder:text-slate-300 dark:placeholder:text-slate-700"
                 />
               </div>
               {country.note && (
-                <p className="text-xs text-slate-400 dark:text-slate-500 mt-2 leading-relaxed">{country.note}</p>
+                <p className="text-xs text-slate-400 dark:text-slate-500 mt-1.5 leading-relaxed">{country.note}</p>
               )}
+            </div>
+
+            {/* Slider */}
+            <div>
+              <input type="range" min="0" max={sliderMax} step={Math.max(1000, Math.round(sliderMax / 500))}
+                value={numericIncome || 0}
+                onChange={(e) => {
+                  const val = Number(e.target.value);
+                  setIncome(val ? val.toLocaleString(country.locale) : '');
+                }}
+                className="w-full"
+                style={{
+                  background: numericIncome
+                    ? `linear-gradient(to right, #6366f1 ${Math.min((numericIncome / sliderMax) * 100, 100)}%, rgba(148,163,184,0.25) ${Math.min((numericIncome / sliderMax) * 100, 100)}%)`
+                    : 'rgba(148,163,184,0.25)',
+                }}
+              />
+              <div className="flex justify-between mt-1">
+                <span className="text-[10px] text-slate-400 font-mono">{currencySymbol}0</span>
+                <span className="text-[10px] text-slate-400 font-mono">{fmtCompact(sliderMax)}</span>
+              </div>
             </div>
 
             {/* Quick presets */}
             <div>
-              <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.16em] mb-2.5">Quick Examples</p>
-              <div className="flex flex-wrap gap-2">
+              <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.16em] mb-2">Quick Examples</p>
+              <div className="flex flex-wrap gap-1.5">
                 {PRESETS.map(({ label, value }) => (
                   <button key={label}
-                    className="preset-btn"
+                    className={`preset-btn ${numericIncome === value ? 'preset-btn-active' : ''}`}
                     onClick={() => setIncome(value.toLocaleString(country.locale))}
                   >
                     {currencySymbol}{label}
@@ -187,8 +260,8 @@ export default function App() {
 
             {multiStatuses && (
               <div>
-                <label className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.16em] mb-2.5">Filing Status</label>
-                <div className="flex flex-col gap-2">
+                <label className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.16em] mb-2">Filing Status</label>
+                <div className="flex flex-col gap-1.5">
                   {Object.entries(country.statuses).map(([value, { label, icon }]) => (
                     <button key={value} onClick={() => setFilingStatus(value)}
                       className={`flex items-center gap-3 px-4 py-2.5 rounded-xl border-2 text-sm font-semibold text-left transition-all ${
@@ -204,10 +277,26 @@ export default function App() {
               </div>
             )}
           </div>
+
+          {/* ── Live summary strip ── */}
+          <div className={`card overflow-hidden transition-all duration-500 ${hasIncome ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+            <div className="grid grid-cols-3 divide-x divide-slate-100 dark:divide-white/5">
+              {[
+                { label:'Tax Paid',      val: hasIncome ? fmt(result.totalTax) : '—',                color:'text-rose-500 dark:text-rose-400' },
+                { label:'Take-Home',     val: hasIncome ? fmt(numericIncome - result.totalTax) : '—', color:'text-emerald-600 dark:text-emerald-400' },
+                { label:'Effective Rate',val: hasIncome ? pct(result.effectiveRate) : '—',            color:'gradient-text' },
+              ].map(({ label, val, color }) => (
+                <div key={label} className="p-4 text-center">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1">{label}</p>
+                  <p className={`text-base sm:text-lg font-extrabold font-mono ${color}`}>{val}</p>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
 
         {/* Scroll cue */}
-        <div className={`absolute bottom-7 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 transition-opacity duration-500 ${hasIncome ? 'opacity-100 text-slate-400 dark:text-slate-500' : 'opacity-30 text-slate-300 dark:text-slate-700'}`}>
+        <div className={`absolute bottom-6 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 transition-opacity duration-500 ${hasIncome ? 'opacity-100 text-slate-400 dark:text-slate-500' : 'opacity-25 text-slate-300 dark:text-slate-700'}`}>
           <span className="text-[10px] font-bold uppercase tracking-widest">Scroll to explore</span>
           <svg className="w-5 h-5 bounce-slow" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -219,8 +308,8 @@ export default function App() {
       {hasIncome && (
         <>
           {/* Section 1 — Metrics */}
-          <section className="section-violet py-16 px-4">
-            <div className="max-w-4xl mx-auto space-y-6">
+          <section className="section-violet py-10 px-4">
+            <div className="max-w-4xl mx-auto space-y-5">
               <SectionLabel icon="📊" text="Summary" />
               <MetricsRow result={result} fmt={fmt} pct={pct} />
             </div>
@@ -229,24 +318,35 @@ export default function App() {
           <WaveDivider from="#ede9fe" to="#ccfbf1" darkFrom="#110d24" darkTo="#031a16" />
 
           {/* Section 2 — Bar chart */}
-          <section className="section-teal py-16 px-4">
-            <div className="max-w-4xl mx-auto space-y-6">
+          <section className="section-teal py-10 px-4">
+            <div className="max-w-4xl mx-auto space-y-5">
               <SectionLabel icon="🎨" text="Income Distribution" />
               <Reveal direction="from-left">
-                <div className="card p-6 sm:p-8">
+                <div className="card p-5 sm:p-6">
                   <div className="flex items-end justify-between mb-3">
                     <p className="text-xs text-slate-400 dark:text-slate-500 font-medium">
-                      {fmt(numericIncome)} across {result.breakdown.filter(b => b.incomeInBracket > 0).length} brackets
+                      {fmt(numericIncome)} across {result.breakdown.filter(b => b.incomeInBracket > 0).length} bracket{result.breakdown.filter(b => b.incomeInBracket > 0).length !== 1 ? 's' : ''}
                     </p>
-                    <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 font-mono">
+                    <p className="text-xs font-bold text-rose-500 dark:text-rose-400 font-mono">
                       {fmt(result.totalTax)} tax
                     </p>
                   </div>
-                  <AnimatedBar breakdown={result.breakdown} income={numericIncome} fmt={fmt} fmtCompact={fmtCompact} />
-                  <div className="mt-6 flex flex-wrap gap-x-5 gap-y-2.5">
+                  <AnimatedBar
+                    breakdown={result.breakdown}
+                    income={numericIncome}
+                    fmt={fmt}
+                    fmtCompact={fmtCompact}
+                    hoveredBracket={hoveredBracket}
+                    setHoveredBracket={setHoveredBracket}
+                  />
+                  <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2">
                     {result.breakdown.map((b, i) =>
                       b.incomeInBracket > 0 ? (
-                        <div key={i} className="flex items-center gap-2">
+                        <div key={i}
+                          className={`flex items-center gap-2 cursor-default transition-opacity ${hoveredBracket !== null && hoveredBracket !== i ? 'opacity-35' : 'opacity-100'}`}
+                          onMouseEnter={() => setHoveredBracket(i)}
+                          onMouseLeave={() => setHoveredBracket(null)}
+                        >
                           <div className="w-3 h-3 rounded-sm shrink-0" style={{ backgroundColor: BRACKET_COLORS[i] }} />
                           <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
                             {(b.rate * 100).toFixed(1)}% — {fmtCompact(b.incomeInBracket)}
@@ -263,8 +363,8 @@ export default function App() {
           <WaveDivider from="#f0fdf9" to="#fce7f3" darkFrom="#061412" darkTo="#1a0810" />
 
           {/* Section 3 — Table + Tax Meter */}
-          <section className="section-rose py-16 px-4">
-            <div className="max-w-4xl mx-auto space-y-6">
+          <section className="section-rose py-10 px-4">
+            <div className="max-w-4xl mx-auto space-y-5">
               <SectionLabel icon="🧾" text="Bracket Breakdown" />
               <Reveal direction="from-right">
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
@@ -282,11 +382,19 @@ export default function App() {
                         </thead>
                         <tbody className="divide-y divide-slate-100 dark:divide-white/5">
                           {result.breakdown.map((b, i) => {
-                            const active = b.incomeInBracket > 0;
+                            const active    = b.incomeInBracket > 0;
+                            const isHovered = hoveredBracket === i;
                             return (
                               <tr key={i}
-                                className={`transition-colors ${active ? 'table-row-active hover:bg-pink-50/50 dark:hover:bg-white/5' : 'opacity-25'}`}
-                                style={{ '--row-accent': BRACKET_COLORS[i] }}>
+                                className={`transition-colors cursor-default ${
+                                  active
+                                    ? `table-row-active ${isHovered ? 'bg-slate-50 dark:bg-white/[0.07]' : 'hover:bg-slate-50/70 dark:hover:bg-white/[0.04]'}`
+                                    : 'opacity-25'
+                                }`}
+                                style={{ '--row-accent': BRACKET_COLORS[i] }}
+                                onMouseEnter={() => active && setHoveredBracket(i)}
+                                onMouseLeave={() => setHoveredBracket(null)}
+                              >
                                 <td className="px-4 py-3">
                                   <div className="flex items-center gap-2">
                                     <div className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold text-white shrink-0"
@@ -322,21 +430,42 @@ export default function App() {
                   </div>
 
                   {/* Tax meter sidebar */}
-                  <TaxMeterCard result={result} fmt={fmt} pct={pct} />
+                  <TaxMeterCard result={result} pct={pct} />
                 </div>
               </Reveal>
             </div>
           </section>
 
+          <WaveDivider from="#fff1f8" to="#ede9fe" darkFrom="#150610" darkTo="#110d24" />
+
+          {/* Section 4 — Tax Insights */}
+          <section className="section-violet py-10 px-4">
+            <div className="max-w-4xl mx-auto space-y-5">
+              <SectionLabel icon="💡" text="Tax Insights" />
+              <Reveal direction="from-below">
+                <InsightsCard result={result} fmt={fmt} fmtCompact={fmtCompact} pct={pct} income={numericIncome} />
+              </Reveal>
+            </div>
+          </section>
+
           {/* Take-home strip */}
-          <TakeHomeStrip income={numericIncome} tax={result.totalTax} fmt={fmt} pct={pct} effectiveRate={result.effectiveRate} />
+          <TakeHomeStrip
+            income={numericIncome}
+            tax={result.totalTax}
+            fmt={fmt}
+            pct={pct}
+            effectiveRate={result.effectiveRate}
+            onShare={handleShare}
+            onPrint={handlePrint}
+            shareCopied={shareCopied}
+          />
         </>
       )}
 
       {/* Empty state */}
       {!hasIncome && <EmptyState />}
 
-      <footer className="border-t border-slate-200 dark:border-white/5 py-6 px-4 text-center">
+      <footer className="border-t border-slate-200 dark:border-white/5 py-5 px-4 text-center">
         <p className="text-xs text-slate-300 dark:text-slate-700">
           For estimation purposes only · Consult a tax professional for advice
         </p>
@@ -345,55 +474,29 @@ export default function App() {
   );
 }
 
-/* ── Metrics row with count-up ─────────────────────── */
+/* ── Metrics row ───────────────────────────────────── */
 function MetricsRow({ result, fmt, pct }) {
   const [ref, inView] = useInView();
-
-  const taxRaw      = useCountUp(Math.round(result.totalTax),      1300);
+  const taxRaw      = useCountUp(Math.round(result.totalTax), 1300);
   const effectRaw   = useCountUp(Math.round(result.effectiveRate * 10000), 1200);
   const marginalRaw = useCountUp(Math.round(result.marginalRate  * 10000), 1100);
-
-  const fmtTax = (n) => fmt(n);
   const fmtPct = (raw) => (raw / 100).toFixed(2) + '%';
 
   return (
     <div ref={ref} className={`stagger grid grid-cols-1 sm:grid-cols-3 gap-4 ${inView ? 'visible' : ''}`}>
-      <GlowMetricCard
-        label="Total Tax Owed"
-        value={inView ? fmtTax(taxRaw) : fmt(0)}
-        sub={`federal/national only`}
-        icon="💸"
-        gradient="linear-gradient(135deg,#4f46e5,#6366f1,#818cf8)"
-        glowClass="glow-indigo"
-        textColor="#818cf8"
-      />
-      <GlowMetricCard
-        label="Effective Rate"
-        value={inView ? fmtPct(effectRaw) : '0.00%'}
-        sub="avg across all income"
-        icon="📉"
-        gradient="linear-gradient(135deg,#059669,#10b981,#34d399)"
-        glowClass="glow-emerald"
-        textColor="#34d399"
-      />
-      <GlowMetricCard
-        label="Marginal Rate"
-        value={inView ? fmtPct(marginalRaw) : '0.00%'}
-        sub="on your next dollar"
-        icon="📈"
-        gradient="linear-gradient(135deg,#7c3aed,#8b5cf6,#a78bfa)"
-        glowClass="glow-violet"
-        textColor="#a78bfa"
-      />
+      <GlowMetricCard label="Total Tax Owed"   value={inView ? fmt(taxRaw)        : fmt(0)}    sub="federal/national only"
+        icon="💸" gradient="linear-gradient(135deg,#4f46e5,#6366f1,#818cf8)" glowClass="glow-indigo" />
+      <GlowMetricCard label="Effective Rate"   value={inView ? fmtPct(effectRaw)  : '0.00%'}   sub="avg across all income"
+        icon="📉" gradient="linear-gradient(135deg,#059669,#10b981,#34d399)" glowClass="glow-emerald" />
+      <GlowMetricCard label="Marginal Rate"    value={inView ? fmtPct(marginalRaw): '0.00%'}   sub="on your next dollar"
+        icon="📈" gradient="linear-gradient(135deg,#7c3aed,#8b5cf6,#a78bfa)" glowClass="glow-violet" />
     </div>
   );
 }
 
-function GlowMetricCard({ label, value, sub, icon, gradient, glowClass, textColor }) {
+function GlowMetricCard({ label, value, sub, icon, gradient, glowClass }) {
   return (
-    <div className={`metric-card ${glowClass}`}
-      style={{ background: gradient }}>
-      {/* Shimmer sweep overlay */}
+    <div className={`metric-card ${glowClass}`} style={{ background: gradient }}>
       <div className="shimmer absolute inset-0 rounded-[20px] pointer-events-none" />
       <div className="relative z-10">
         <div className="flex items-start justify-between mb-4">
@@ -408,30 +511,38 @@ function GlowMetricCard({ label, value, sub, icon, gradient, glowClass, textColo
 }
 
 /* ── Animated bar chart ────────────────────────────── */
-function AnimatedBar({ breakdown, income, fmt, fmtCompact }) {
+function AnimatedBar({ breakdown, income, fmt, fmtCompact, hoveredBracket, setHoveredBracket }) {
   const [ref, inView] = useInView(0.1);
   if (!breakdown.some(b => b.incomeInBracket > 0)) return null;
 
   return (
-    <div className="space-y-2" ref={ref}>
-      <div className="flex h-16 w-full gap-0.5 rounded-2xl overflow-hidden"
+    <div ref={ref}>
+      <div className="flex h-20 w-full gap-0.5 rounded-2xl overflow-hidden"
         style={{ backgroundColor:'rgba(148,163,184,0.2)' }}>
         {breakdown.map((b, i) => {
           if (b.incomeInBracket === 0) return null;
           const w = (b.incomeInBracket / income) * 100;
+          const isHovered = hoveredBracket === i;
+          const isDimmed  = hoveredBracket !== null && !isHovered;
           return (
             <div key={i}
-              className={`bar-segment relative group flex items-center justify-center overflow-visible hover:brightness-110 transition-all duration-300 ${inView ? 'bar-animate' : ''}`}
+              className={`bar-segment relative group flex flex-col items-center justify-center overflow-visible cursor-default ${inView ? 'bar-animate' : ''}`}
               style={{
                 width: `${w}%`,
                 backgroundColor: BRACKET_COLORS[i],
                 flexShrink: 0,
                 animationDelay: `${i * 0.08}s`,
-              }}>
-              {w > 5 && (
-                <span className="text-xs font-bold text-white select-none pointer-events-none drop-shadow">
-                  {(b.rate * 100).toFixed(0)}%
-                </span>
+                filter: isDimmed ? 'brightness(0.5)' : isHovered ? 'brightness(1.15)' : undefined,
+                transition: 'filter 0.2s ease',
+              }}
+              onMouseEnter={() => setHoveredBracket(i)}
+              onMouseLeave={() => setHoveredBracket(null)}
+            >
+              {w > 7 && (
+                <div className="flex flex-col items-center leading-none pointer-events-none select-none gap-0.5">
+                  <span className="text-xs font-bold text-white drop-shadow">{(b.rate * 100).toFixed(0)}%</span>
+                  {w > 13 && <span className="text-[10px] text-white/75">{fmtCompact(b.incomeInBracket)}</span>}
+                </div>
               )}
               {/* Tooltip */}
               <div className="absolute bottom-[calc(100%+10px)] left-1/2 -translate-x-1/2 z-30 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-150">
@@ -448,54 +559,38 @@ function AnimatedBar({ breakdown, income, fmt, fmtCompact }) {
           );
         })}
       </div>
-      <div className="flex w-full">
-        {breakdown.map((b, i) => {
-          if (b.incomeInBracket === 0) return null;
-          const w = (b.incomeInBracket / income) * 100;
-          return (
-            <div key={i} className="overflow-hidden" style={{ width:`${w}%` }}>
-              {w > 10 && (
-                <p className="text-xs text-slate-400 dark:text-slate-500 text-center truncate px-1 mt-1">
-                  {fmtCompact(b.incomeInBracket)}
-                </p>
-              )}
-            </div>
-          );
-        })}
-      </div>
     </div>
   );
 }
 
-/* ── Tax meter circular gauge ──────────────────────── */
-function TaxMeterCard({ result, fmt, pct }) {
+/* ── Tax meter ─────────────────────────────────────── */
+function TaxMeterCard({ result, pct }) {
   const [ref, inView] = useInView(0.2);
-  const r    = 52;
+  const r    = 56;
   const circ = 2 * Math.PI * r;
   const eff  = Math.min(result.effectiveRate, 1);
   const mar  = Math.min(result.marginalRate, 1);
 
   return (
-    <div ref={ref} className="card p-6 flex flex-col items-center justify-center gap-5">
+    <div ref={ref} className="card p-6 flex flex-col items-center justify-center gap-4">
       <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Tax Rates</p>
 
-      {/* Effective rate ring */}
-      <div className="relative w-36 h-36">
-        <svg className="w-full h-full -rotate-90" viewBox="0 0 120 120">
+      <div className="relative w-44 h-44">
+        <svg className="w-full h-full -rotate-90" viewBox="0 0 130 130">
           {/* Track */}
-          <circle cx="60" cy="60" r={r} fill="none" stroke="currentColor" strokeWidth="10"
+          <circle cx="65" cy="65" r={r} fill="none" stroke="currentColor" strokeWidth="11"
             className="text-slate-200 dark:text-slate-800" />
-          {/* Marginal (outer hint) */}
-          <circle cx="60" cy="60" r={r} fill="none"
-            stroke="rgba(168,85,247,0.25)" strokeWidth="10"
+          {/* Marginal (faint) */}
+          <circle cx="65" cy="65" r={r} fill="none"
+            stroke="rgba(168,85,247,0.30)" strokeWidth="11"
             strokeDasharray={circ}
             strokeDashoffset={inView ? circ * (1 - mar) : circ}
             strokeLinecap="round"
             style={{ transition:'stroke-dashoffset 1.6s cubic-bezier(.22,1,.36,1) 0.3s' }}
           />
           {/* Effective */}
-          <circle cx="60" cy="60" r={r} fill="none"
-            stroke="url(#gaugeGrad)" strokeWidth="10"
+          <circle cx="65" cy="65" r={r} fill="none"
+            stroke="url(#gaugeGrad)" strokeWidth="11"
             strokeDasharray={circ}
             strokeDashoffset={inView ? circ * (1 - eff) : circ}
             strokeLinecap="round"
@@ -514,8 +609,7 @@ function TaxMeterCard({ result, fmt, pct }) {
         </div>
       </div>
 
-      {/* Legend */}
-      <div className="w-full space-y-2.5 text-sm">
+      <div className="w-full space-y-2.5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 rounded-full" style={{ background:'linear-gradient(135deg,#6366f1,#ec4899)' }} />
@@ -531,7 +625,7 @@ function TaxMeterCard({ result, fmt, pct }) {
           <span className="font-mono font-bold text-slate-700 dark:text-slate-300 text-xs">{pct(result.marginalRate)}</span>
         </div>
         <div className="pt-2 border-t border-slate-100 dark:border-white/5 flex items-center justify-between">
-          <span className="text-xs text-slate-400 dark:text-slate-500">Tax saved vs marginal</span>
+          <span className="text-xs text-slate-400 dark:text-slate-500">Progressive savings</span>
           <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400 text-xs">
             {pct(result.marginalRate - result.effectiveRate)}
           </span>
@@ -541,52 +635,184 @@ function TaxMeterCard({ result, fmt, pct }) {
   );
 }
 
+/* ── Tax Insights ──────────────────────────────────── */
+function InsightsCard({ result, fmt, fmtCompact, pct, income }) {
+  const hasAnyTax   = result.totalTax > 0;
+  const keepPct     = income > 0 ? ((income - result.totalTax) / income * 100).toFixed(1) : '100.0';
+  const topIdx      = result.breakdown.reduce((best, b, i) =>
+    b.taxOwed > (result.breakdown[best]?.taxOwed ?? 0) ? i : best, 0);
+  const topBracket  = result.breakdown[topIdx];
+  const taxFreeItem = result.breakdown.find(b => b.rate === 0 && b.incomeInBracket > 0);
+  const taxFreeSave = taxFreeItem && hasAnyTax
+    ? taxFreeItem.incomeInBracket * result.marginalRate
+    : 0;
+
+  const insights = [
+    {
+      icon: '🎯',
+      label: 'You keep',
+      value: `${keepPct}%`,
+      desc: `of your gross — ${fmt(income - result.totalTax)} take-home`,
+      color: 'text-emerald-600 dark:text-emerald-400',
+    },
+    hasAnyTax && {
+      icon: '📊',
+      label: 'Biggest contributor',
+      value: `${(topBracket.rate * 100).toFixed(0)}% bracket`,
+      desc: `generates ${fmt(topBracket.taxOwed)} — the largest single bracket`,
+      color: 'text-violet-600 dark:text-violet-400',
+    },
+    hasAnyTax && {
+      icon: '📉',
+      label: 'Progressive savings',
+      value: pct(result.marginalRate - result.effectiveRate),
+      desc: `lower effective vs marginal, thanks to progressive brackets`,
+      color: 'text-indigo-600 dark:text-indigo-400',
+    },
+    taxFreeSave > 0 && {
+      icon: '🆓',
+      label: 'Tax-free benefit',
+      value: fmt(taxFreeSave),
+      desc: `saved by your ${fmtCompact(taxFreeItem.incomeInBracket)} tax-free allowance`,
+      color: 'text-amber-600 dark:text-amber-400',
+    },
+  ].filter(Boolean);
+
+  return (
+    <div className="card p-5 sm:p-6 space-y-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+        {insights.map(({ icon, label, value, desc, color }) => (
+          <div key={label} className="flex gap-3">
+            <div className="text-2xl shrink-0 mt-0.5">{icon}</div>
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-0.5">{label}</p>
+              <p className={`text-lg font-extrabold font-mono ${color}`}>{value}</p>
+              <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5 leading-relaxed">{desc}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Progressive tax explainer */}
+      <div className="border-t border-slate-100 dark:border-white/5 pt-4">
+        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-2">
+          💡 Why is my effective rate lower than my marginal rate?
+        </p>
+        <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+          In a progressive system each tax rate only applies to income <em>within that band</em> — not your full income.
+          Your top rate of {pct(result.marginalRate)} only hits your highest dollars, while earlier income is taxed at lower rates.
+          The blended result is your effective rate of {pct(result.effectiveRate)}.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 /* ── Take-home strip ───────────────────────────────── */
-function TakeHomeStrip({ income, tax, fmt, pct, effectiveRate }) {
+function TakeHomeStrip({ income, tax, fmt, pct, effectiveRate, onShare, onPrint, shareCopied }) {
   const [ref, inView] = useInView();
   const takeHome = income - tax;
 
-  const incomeAnim   = useCountUp(inView ? Math.round(income)    : 0, 1200);
-  const taxAnim      = useCountUp(inView ? Math.round(tax)       : 0, 1300);
-  const takeHomeAnim = useCountUp(inView ? Math.round(takeHome)  : 0, 1100);
+  const incomeAnim   = useCountUp(inView ? Math.round(income)   : 0, 1200);
+  const taxAnim      = useCountUp(inView ? Math.round(tax)      : 0, 1300);
+  const takeHomeAnim = useCountUp(inView ? Math.round(takeHome) : 0, 1100);
 
   return (
-    <section className="section-violet px-4 py-16">
+    <section className="section-violet px-4 py-10">
       <div ref={ref} className={`reveal from-below max-w-4xl mx-auto ${inView ? 'visible' : ''}`}>
         <div className="relative rounded-2xl overflow-hidden"
           style={{ background:'linear-gradient(135deg,#4f46e5 0%,#7c3aed 35%,#db2777 70%,#f97316 100%)' }}>
           <div className="shimmer absolute inset-0 pointer-events-none" />
-          <div className="relative z-10 px-8 py-10 text-white">
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] opacity-60 mb-7 flex items-center gap-2">
-              <span className="coin-spin">💵</span> After-Tax Snapshot
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 mb-8">
-              {[
-                { label:'Gross Income', val: fmt(incomeAnim),   sub: null },
-                { label:'Tax Paid',     val: fmt(taxAnim),      sub: `effective rate ${pct(effectiveRate)}` },
-                { label:'Take-Home',    val: fmt(takeHomeAnim), sub: `${(100 - effectiveRate * 100).toFixed(1)}% of gross` },
-              ].map(({ label, val, sub }) => (
-                <div key={label}>
-                  <p className="text-sm opacity-60 mb-1.5">{label}</p>
-                  <p className="text-3xl sm:text-4xl font-extrabold font-mono">{val}</p>
-                  {sub && <p className="text-xs opacity-40 mt-1.5">{sub}</p>}
-                </div>
-              ))}
+          <div className="relative z-10 px-6 sm:px-8 py-8 text-white">
+            {/* Header row */}
+            <div className="flex items-center justify-between mb-6">
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] opacity-60 flex items-center gap-2">
+                <span className="coin-spin">💵</span> After-Tax Snapshot
+              </p>
+              <div className="flex gap-2">
+                <button onClick={onShare}
+                  className="text-xs font-semibold bg-white/15 hover:bg-white/25 border border-white/20 rounded-lg px-3 py-1.5 transition-all">
+                  {shareCopied ? '✓ Copied!' : '🔗 Share'}
+                </button>
+                <button onClick={onPrint}
+                  className="text-xs font-semibold bg-white/15 hover:bg-white/25 border border-white/20 rounded-lg px-3 py-1.5 transition-all">
+                  🖨️ Print
+                </button>
+              </div>
             </div>
-            {/* Time breakdowns */}
-            <div className="border-t border-white/15 pt-5 grid grid-cols-2 sm:grid-cols-4 gap-4">
+
+            {/* Primary: monthly take-home */}
+            <div className="text-center mb-6 pb-6 border-b border-white/15">
+              <p className="text-sm opacity-60 mb-2 uppercase tracking-wider font-bold">Monthly Take-Home</p>
+              <p className="text-5xl sm:text-6xl font-extrabold font-mono">{fmt(Math.round(takeHome / 12))}</p>
+              <p className="text-sm opacity-50 mt-2">{(100 - effectiveRate * 100).toFixed(1)}% of gross retained after tax</p>
+            </div>
+
+            {/* Annual overview */}
+            <div className="grid grid-cols-3 gap-4 mb-6">
               {[
-                { label: 'Monthly',   val: fmt(Math.round(takeHome / 12)) },
-                { label: 'Bi-Weekly', val: fmt(Math.round(takeHome / 26)) },
-                { label: 'Weekly',    val: fmt(Math.round(takeHome / 52)) },
-                { label: 'Daily',     val: fmt(Math.round(takeHome / 260)) },
+                { label:'Gross Income',     val: fmt(incomeAnim) },
+                { label:'Tax Paid',         val: fmt(taxAnim) },
+                { label:'Annual Take-Home', val: fmt(takeHomeAnim) },
               ].map(({ label, val }) => (
-                <div key={label} className="text-center bg-white/10 rounded-xl px-3 py-3">
-                  <p className="text-[10px] font-bold uppercase tracking-widest opacity-50 mb-1">{label}</p>
-                  <p className="text-base font-extrabold font-mono">{val}</p>
+                <div key={label} className="text-center">
+                  <p className="text-[10px] opacity-50 mb-1 uppercase tracking-wider">{label}</p>
+                  <p className="text-base sm:text-xl font-extrabold font-mono">{val}</p>
                 </div>
               ))}
             </div>
+
+            {/* Time breakdowns (secondary) */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+              {[
+                { label:'Monthly',   val: fmt(Math.round(takeHome / 12))  },
+                { label:'Bi-Weekly', val: fmt(Math.round(takeHome / 26))  },
+                { label:'Weekly',    val: fmt(Math.round(takeHome / 52))  },
+                { label:'Daily',     val: fmt(Math.round(takeHome / 260)) },
+              ].map(({ label, val }) => (
+                <div key={label} className="text-center bg-white/10 rounded-xl px-2 py-2.5">
+                  <p className="text-[10px] font-bold uppercase tracking-widest opacity-50 mb-1">{label}</p>
+                  <p className="text-sm font-extrabold font-mono">{val}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ── Empty state ───────────────────────────────────── */
+function EmptyState() {
+  return (
+    <section className="py-12 px-4">
+      <div className="max-w-4xl mx-auto">
+        <p className="text-center text-[10px] font-bold uppercase tracking-widest text-slate-300 dark:text-slate-700 mb-6">
+          Enter income above to unlock your full breakdown
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5 opacity-35 pointer-events-none select-none">
+          {[
+            { label:'Total Tax Owed', icon:'💸', gradient:'linear-gradient(135deg,#4f46e5,#6366f1,#818cf8)' },
+            { label:'Effective Rate', icon:'📉', gradient:'linear-gradient(135deg,#059669,#10b981,#34d399)' },
+            { label:'Marginal Rate',  icon:'📈', gradient:'linear-gradient(135deg,#7c3aed,#8b5cf6,#a78bfa)' },
+          ].map(({ label, icon, gradient }) => (
+            <div key={label} className="metric-card" style={{ background: gradient }}>
+              <div className="flex items-start justify-between mb-4">
+                <p className="text-xs font-bold uppercase tracking-wider text-white/70">{label}</p>
+                <span className="text-2xl">{icon}</span>
+              </div>
+              <div className="h-8 w-28 rounded-lg bg-white/20 mb-2" />
+              <div className="h-3 w-20 rounded bg-white/15" />
+            </div>
+          ))}
+        </div>
+        <div className="card p-5 opacity-30 pointer-events-none select-none">
+          <div className="h-3 w-40 rounded bg-slate-200 dark:bg-slate-700 mb-4" />
+          <div className="flex h-16 gap-0.5 rounded-xl overflow-hidden">
+            {[42, 28, 19, 11].map((w, i) => (
+              <div key={i} style={{ width:`${w}%`, background: BRACKET_COLORS[i], opacity:0.7, borderRadius:4 }} />
+            ))}
           </div>
         </div>
       </div>
@@ -610,54 +836,6 @@ function Reveal({ children, direction = 'from-below' }) {
   return <div ref={ref} className={`reveal ${direction} ${inView ? 'visible' : ''}`}>{children}</div>;
 }
 
-/* ── Empty state ───────────────────────────────────── */
-function EmptyState() {
-  return (
-    <section className="py-16 px-4">
-      <div className="max-w-4xl mx-auto">
-        {/* Preview cards */}
-        <p className="text-center text-[10px] font-bold uppercase tracking-widest text-slate-300 dark:text-slate-700 mb-8">
-          Enter income above to unlock your full breakdown
-        </p>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6 opacity-40 pointer-events-none select-none">
-          {[
-            { label:'Total Tax Owed', icon:'💸', gradient:'linear-gradient(135deg,#4f46e5,#6366f1,#818cf8)' },
-            { label:'Effective Rate', icon:'📉', gradient:'linear-gradient(135deg,#059669,#10b981,#34d399)' },
-            { label:'Marginal Rate',  icon:'📈', gradient:'linear-gradient(135deg,#7c3aed,#8b5cf6,#a78bfa)' },
-          ].map(({ label, icon, gradient }) => (
-            <div key={label} className="metric-card" style={{ background: gradient }}>
-              <div className="flex items-start justify-between mb-4">
-                <p className="text-xs font-bold uppercase tracking-wider text-white/70">{label}</p>
-                <span className="text-2xl">{icon}</span>
-              </div>
-              <div className="h-8 w-28 rounded-lg bg-white/20 mb-2" />
-              <div className="h-3 w-20 rounded bg-white/15" />
-            </div>
-          ))}
-        </div>
-        {/* Preview bar */}
-        <div className="card p-6 opacity-35 pointer-events-none select-none">
-          <div className="h-3 w-40 rounded bg-slate-200 dark:bg-slate-700 mb-4" />
-          <div className="flex h-12 gap-0.5 rounded-xl overflow-hidden">
-            {[40, 25, 20, 15].map((w, i) => (
-              <div key={i} className="rounded-sm"
-                style={{ width: `${w}%`, background: BRACKET_COLORS[i], opacity: 0.7 }} />
-            ))}
-          </div>
-          <div className="mt-4 flex gap-4">
-            {[0, 1, 2, 3].map(i => (
-              <div key={i} className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-sm" style={{ background: BRACKET_COLORS[i] }} />
-                <div className="h-2 w-12 rounded bg-slate-200 dark:bg-slate-700" />
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
 function WaveDivider({ from, to, darkFrom, darkTo }) {
   return (
     <div className="wave-divider -my-px" style={{ lineHeight:0 }}>
@@ -677,17 +855,17 @@ function WaveDivider({ from, to, darkFrom, darkTo }) {
 function CountryPicker({ countryCode, onChange }) {
   const [open, setOpen]   = useState(false);
   const [query, setQuery] = useState('');
-  const wrapRef = useRef(null);
+  const wrapRef  = useRef(null);
   const inputRef = useRef(null);
-  const current = COUNTRIES[countryCode];
+  const current  = COUNTRIES[countryCode];
 
   useEffect(() => {
-    const handler = (e) => { if (!wrapRef.current?.contains(e.target)) setOpen(false); };
-    const keyHandler = (e) => { if (e.key === 'Escape') setOpen(false); };
-    document.addEventListener('mousedown', handler);
+    const clickHandler = (e) => { if (!wrapRef.current?.contains(e.target)) setOpen(false); };
+    const keyHandler   = (e) => { if (e.key === 'Escape') setOpen(false); };
+    document.addEventListener('mousedown', clickHandler);
     document.addEventListener('keydown', keyHandler);
     return () => {
-      document.removeEventListener('mousedown', handler);
+      document.removeEventListener('mousedown', clickHandler);
       document.removeEventListener('keydown', keyHandler);
     };
   }, []);
@@ -705,7 +883,6 @@ function CountryPicker({ countryCode, onChange }) {
 
   return (
     <div ref={wrapRef} className="relative">
-      {/* Trigger */}
       <div className="card p-4">
         <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.16em] mb-2">Select Country</p>
         <button
@@ -721,13 +898,11 @@ function CountryPicker({ countryCode, onChange }) {
         </button>
       </div>
 
-      {/* Dropdown */}
       {open && (
         <div className="absolute z-50 top-full left-0 right-0 mt-2 rounded-2xl overflow-hidden shadow-2xl border border-slate-200 dark:border-slate-700"
-          style={{ background:'rgba(255,255,255,0.97)', backdropFilter:'blur(20px)', maxHeight:'420px', display:'flex', flexDirection:'column' }}>
+          style={{ background:'rgba(255,255,255,0.97)', backdropFilter:'blur(20px)', maxHeight:'400px', display:'flex', flexDirection:'column' }}>
           <style>{`.dark .country-dropdown{background:rgba(10,8,20,0.97)!important}`}</style>
-          <div className="country-dropdown" style={{ display:'flex', flexDirection:'column', maxHeight:'420px' }}>
-            {/* Search */}
+          <div className="country-dropdown" style={{ display:'flex', flexDirection:'column', maxHeight:'400px' }}>
             <div className="p-3 border-b border-slate-100 dark:border-slate-800 shrink-0">
               <div className="relative">
                 <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -739,8 +914,6 @@ function CountryPicker({ countryCode, onChange }) {
                 />
               </div>
             </div>
-
-            {/* List */}
             <div className="overflow-y-auto">
               {Object.entries(REGIONS).map(([region, codes]) => {
                 const matches = codes.filter(c => COUNTRIES[c] && matchesQuery(c));
@@ -751,7 +924,7 @@ function CountryPicker({ countryCode, onChange }) {
                       {region}
                     </div>
                     {matches.map(code => {
-                      const c = COUNTRIES[code];
+                      const c      = COUNTRIES[code];
                       const active = code === countryCode;
                       return (
                         <button key={code}
