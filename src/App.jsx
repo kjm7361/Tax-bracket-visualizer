@@ -167,7 +167,7 @@ function ChartTooltip({ active, payload, label, dark }) {
 function RateCurve({ filingStatus, stateCode, currentIncome, dark }) {
   const maxIncome = Math.max(currentIncome * 1.5, 300000);
   const data = useMemo(
-    () => generateRateCurve(filingStatus, maxIncome, stateCode, 2024, 80),
+    () => generateRateCurve(filingStatus, maxIncome, stateCode, 2025, 80),
     [filingStatus, stateCode, maxIncome]
   );
   const tickStyle = { fill: dark ? '#94a3b8' : '#64748b', fontSize: 11 };
@@ -201,9 +201,9 @@ function RateCurve({ filingStatus, stateCode, currentIncome, dark }) {
 // ── Year compare chart ─────────────────────────────────────────────────────
 function YearCompareChart({ filingStatus, currentIncome, dark }) {
   const maxIncome = Math.max(currentIncome * 1.5, 300000);
+  const d25 = useMemo(() => generateRateCurve(filingStatus, maxIncome, 'NONE', 2025, 60), [filingStatus, maxIncome]);
   const d24 = useMemo(() => generateRateCurve(filingStatus, maxIncome, 'NONE', 2024, 60), [filingStatus, maxIncome]);
-  const d23 = useMemo(() => generateRateCurve(filingStatus, maxIncome, 'NONE', 2023, 60), [filingStatus, maxIncome]);
-  const merged = d24.map((d, i) => ({ income: d.income, '2024': d.effective, '2023': d23[i]?.effective || 0 }));
+  const merged = d25.map((d, i) => ({ income: d.income, '2025': d.effective, '2024': d24[i]?.effective || 0 }));
   const tickStyle = { fill: dark ? '#94a3b8' : '#64748b', fontSize: 11 };
   const yTicks = [0, 5, 10, 15, 20, 25, 30];
   return (
@@ -221,8 +221,8 @@ function YearCompareChart({ filingStatus, currentIncome, dark }) {
           width={44}
         />
         <Tooltip content={<ChartTooltip dark={dark} />} />
-        <Line type="monotone" dataKey="2024" stroke="#10b981" strokeWidth={2}   dot={false} name="2024" />
-        <Line type="monotone" dataKey="2023" stroke="#f59e0b" strokeWidth={2}   dot={false} strokeDasharray="6 3" name="2023" />
+        <Line type="monotone" dataKey="2025" stroke="#10b981" strokeWidth={2}   dot={false} name="2025" />
+        <Line type="monotone" dataKey="2024" stroke="#f59e0b" strokeWidth={2}   dot={false} strokeDasharray="6 3" name="2024" />
         <ReferenceLine x={Math.round(currentIncome)} stroke="#ef4444" strokeDasharray="4 2" strokeWidth={1.5} />
       </ComposedChart>
     </ResponsiveContainer>
@@ -899,7 +899,7 @@ export default function App() {
       const { jsPDF } = await import('jspdf');
       const doc = new jsPDF({ unit: 'mm', format: 'a4' });
       const lines = [
-        'US Federal Tax Summary (2024)', '',
+        'US Federal Tax Summary (2025)', '',
         `Filing Status: ${FILING_STATUSES[filingStatus].label}`,
         `State: ${STATE_TAXES[stateCode]?.name || 'None'}`, '',
         'INCOME',
@@ -935,7 +935,7 @@ export default function App() {
       doc.setFont('courier', 'normal');
       doc.setFontSize(10);
       lines.forEach((line, i) => doc.text(line, 15, 15 + i * 6));
-      doc.save('tax-summary-2024.pdf');
+      doc.save('tax-summary-2025.pdf');
     } catch (e) { console.error('PDF export failed:', e); }
   };
 
@@ -1090,7 +1090,7 @@ export default function App() {
             <Card dark={dark}>
               <SLabel dark={dark}>Pre-Tax Deductions</SLabel>
               <div className="space-y-3">
-                <DollarInput label={`401(k) — 2024 max ${fmt(LIMITS.k401)}`} value={k401}
+                <DollarInput label={`401(k) — 2025 max ${fmt(LIMITS.k401)}`} value={k401}
                   onChange={setK401} max={LIMITS.k401} dark={dark} />
                 <DollarInput label={`HSA — max ${fmt(LIMITS.hsa_self)} (self-only)`} value={hsa}
                   onChange={setHsa} max={LIMITS.hsa_family} dark={dark} />
@@ -1329,7 +1329,7 @@ export default function App() {
               { id: 'raise',    label: 'Raise Simulator' },
               { id: 'marginal', label: 'Next $1,000' },
               { id: 'whatif',   label: 'What-If Scenario' },
-              { id: 'yearcomp', label: '2023 vs 2024' },
+              { id: 'yearcomp', label: '2024 vs 2025' },
             ].map(tab => (
               <ToggleBtn key={tab.id} active={planningTab === tab.id}
                 onClick={() => setPlanningTab(tab.id)} dark={dark}
@@ -1446,40 +1446,40 @@ export default function App() {
             </div>
           )}
 
-          {/* 2023 vs 2024 */}
+          {/* 2024 vs 2025 */}
           {planningTab === 'yearcomp' && (
             <div className="space-y-4">
               <YearCompareChart filingStatus={filingStatus} currentIncome={grossIncome || 100000} dark={dark} />
               <div className={`flex flex-wrap gap-x-5 gap-y-1 text-[11px] ${muted}`}>
-                <span className="flex items-center gap-1.5"><span className="inline-block w-4 h-0.5 bg-emerald-400 rounded" />2024 effective</span>
-                <span className="flex items-center gap-1.5"><span className="inline-block w-3 border-t-2 border-dashed border-amber-400" />2023 effective</span>
+                <span className="flex items-center gap-1.5"><span className="inline-block w-4 h-0.5 bg-emerald-400 rounded" />2025 effective</span>
+                <span className="flex items-center gap-1.5"><span className="inline-block w-3 border-t-2 border-dashed border-amber-400" />2024 effective</span>
                 <span className="flex items-center gap-1.5"><span className="inline-block w-0.5 h-3 bg-red-400" />Your income</span>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm min-w-[360px]">
                   <thead>
                     <tr className={`text-[11px] border-b ${muted} ${divider}`}>
-                      {['Metric','2024','2023','Change'].map(h => (
+                      {['Metric','2025','2024','Change'].map(h => (
                         <th key={h} className={`py-2 font-medium ${h === 'Metric' ? 'text-left' : 'text-right'}`}>{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
                     {(() => {
+                      const r25 = calcAll({ ...inputs, year: 2025 });
                       const r24 = calcAll({ ...inputs, year: 2024 });
-                      const r23 = calcAll({ ...inputs, year: 2023 });
                       return [
-                        { label: 'Std Deduction', v24: r24.stdDed,          v23: r23.stdDed          },
-                        { label: 'Federal Tax',   v24: r24.totalFedTax,     v23: r23.totalFedTax     },
-                        { label: 'Taxable Income',v24: r24.ordinaryTaxable, v23: r23.ordinaryTaxable },
-                        { label: 'Take-Home',     v24: r24.takeHome,        v23: r23.takeHome        },
+                        { label: 'Std Deduction',  v25: r25.stdDed,          v24: r24.stdDed          },
+                        { label: 'Federal Tax',     v25: r25.totalFedTax,     v24: r24.totalFedTax     },
+                        { label: 'Taxable Income',  v25: r25.ordinaryTaxable, v24: r24.ordinaryTaxable },
+                        { label: 'Take-Home',       v25: r25.takeHome,        v24: r24.takeHome        },
                       ].map(row => {
-                        const diff = row.v24 - row.v23;
+                        const diff = row.v25 - row.v24;
                         return (
                           <tr key={row.label} className={`border-b text-xs ${divider}`}>
                             <td className={`py-2.5 ${muted}`}>{row.label}</td>
-                            <td className="text-right py-2.5 tabular-nums text-emerald-400">{fmt(row.v24)}</td>
-                            <td className="text-right py-2.5 tabular-nums text-amber-400">{fmt(row.v23)}</td>
+                            <td className="text-right py-2.5 tabular-nums text-emerald-400">{fmt(row.v25)}</td>
+                            <td className="text-right py-2.5 tabular-nums text-amber-400">{fmt(row.v24)}</td>
                             <td className={`text-right py-2.5 tabular-nums font-semibold ${diff >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                               {diff >= 0 ? '+' : ''}{fmt(Math.abs(diff))}
                             </td>
@@ -1588,7 +1588,7 @@ export default function App() {
         {/* ── Footer disclaimer ────────────────────────────────────────── */}
         <div className={`rounded-xl border p-4 text-[11px] leading-relaxed ${dark ? 'bg-slate-800/40 border-slate-700/60 text-slate-400' : 'bg-slate-100 border-slate-200 text-slate-500'}`}>
           <p className={`font-semibold mb-1.5 text-xs ${dark ? 'text-slate-300' : 'text-slate-600'}`}>Disclaimer &amp; Assumptions</p>
-          <p>Based on 2024 IRS federal tax brackets (Rev. Proc. 2023-34) and FICA rates. Includes federal income tax, Social Security (6.2% up to $168,600 wage base), Medicare (1.45% + 0.9% above $200,000), and self-employment tax where applicable. State tax rates are simplified estimates from 2024 schedules. LTCG rates apply qualified dividends and long-term capital gains stacked on top of ordinary income per IRS rules. Standard deductions applied for 2024. Pre-tax deductions (401k, HSA, IRA) reduce AGI. This tool provides estimates only and is <strong>not financial, tax, or legal advice</strong>. Consult a qualified tax professional for your specific situation.</p>
+          <p>Based on 2025 IRS federal tax brackets (Rev. Proc. 2024-40) and FICA rates. Includes federal income tax, Social Security (6.2% up to $176,100 wage base), Medicare (1.45% + 0.9% above $200,000), and self-employment tax where applicable. State tax rates are simplified estimates from 2025 schedules. LTCG rates apply qualified dividends and long-term capital gains stacked on top of ordinary income per IRS rules. Standard deduction for 2025: $15,000 single / $30,000 married. Pre-tax deductions (401k, HSA, IRA) reduce AGI. This tool provides estimates only and is <strong>not financial, tax, or legal advice</strong>. Consult a qualified tax professional for your specific situation.</p>
         </div>
       </div>
       )}

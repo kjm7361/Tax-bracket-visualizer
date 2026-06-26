@@ -1,9 +1,40 @@
-// ── 2024 Federal Tax Brackets ──────────────────────────────────────────────
+// ── Federal Tax Brackets (IRS Rev. Proc.) ─────────────────────────────────
 export const FEDERAL_BRACKETS = {
-  2024: {
+  2025: {
+    // Rev. Proc. 2024-40
     single: [
-      { rate: 0.10, max: 11600 },
-      { rate: 0.12, max: 47150 },
+      { rate: 0.10, max: 11925  },
+      { rate: 0.12, max: 48475  },
+      { rate: 0.22, max: 103350 },
+      { rate: 0.24, max: 197300 },
+      { rate: 0.32, max: 250525 },
+      { rate: 0.35, max: 626350 },
+      { rate: 0.37, max: Infinity },
+    ],
+    mfj: [
+      { rate: 0.10, max: 23850  },
+      { rate: 0.12, max: 96950  },
+      { rate: 0.22, max: 206700 },
+      { rate: 0.24, max: 394600 },
+      { rate: 0.32, max: 501050 },
+      { rate: 0.35, max: 751600 },
+      { rate: 0.37, max: Infinity },
+    ],
+    hoh: [
+      { rate: 0.10, max: 17000  },
+      { rate: 0.12, max: 64850  },
+      { rate: 0.22, max: 103350 },
+      { rate: 0.24, max: 197300 },
+      { rate: 0.32, max: 250500 },
+      { rate: 0.35, max: 626350 },
+      { rate: 0.37, max: Infinity },
+    ],
+  },
+  2024: {
+    // Rev. Proc. 2023-34
+    single: [
+      { rate: 0.10, max: 11600  },
+      { rate: 0.12, max: 47150  },
       { rate: 0.22, max: 100525 },
       { rate: 0.24, max: 191950 },
       { rate: 0.32, max: 243725 },
@@ -11,8 +42,8 @@ export const FEDERAL_BRACKETS = {
       { rate: 0.37, max: Infinity },
     ],
     mfj: [
-      { rate: 0.10, max: 23200 },
-      { rate: 0.12, max: 94300 },
+      { rate: 0.10, max: 23200  },
+      { rate: 0.12, max: 94300  },
       { rate: 0.22, max: 201050 },
       { rate: 0.24, max: 383900 },
       { rate: 0.32, max: 487450 },
@@ -20,8 +51,8 @@ export const FEDERAL_BRACKETS = {
       { rate: 0.37, max: Infinity },
     ],
     hoh: [
-      { rate: 0.10, max: 16550 },
-      { rate: 0.12, max: 63100 },
+      { rate: 0.10, max: 16550  },
+      { rate: 0.12, max: 63100  },
       { rate: 0.22, max: 100500 },
       { rate: 0.24, max: 191950 },
       { rate: 0.32, max: 243700 },
@@ -30,18 +61,19 @@ export const FEDERAL_BRACKETS = {
     ],
   },
   2023: {
+    // Rev. Proc. 2022-38
     single: [
-      { rate: 0.10, max: 11000 },
-      { rate: 0.12, max: 44725 },
-      { rate: 0.22, max: 95375 },
+      { rate: 0.10, max: 11000  },
+      { rate: 0.12, max: 44725  },
+      { rate: 0.22, max: 95375  },
       { rate: 0.24, max: 182950 },
       { rate: 0.32, max: 231250 },
       { rate: 0.35, max: 578125 },
       { rate: 0.37, max: Infinity },
     ],
     mfj: [
-      { rate: 0.10, max: 22000 },
-      { rate: 0.12, max: 89450 },
+      { rate: 0.10, max: 22000  },
+      { rate: 0.12, max: 89450  },
       { rate: 0.22, max: 190750 },
       { rate: 0.24, max: 364200 },
       { rate: 0.32, max: 462500 },
@@ -49,9 +81,9 @@ export const FEDERAL_BRACKETS = {
       { rate: 0.37, max: Infinity },
     ],
     hoh: [
-      { rate: 0.10, max: 15700 },
-      { rate: 0.12, max: 59850 },
-      { rate: 0.22, max: 95350 },
+      { rate: 0.10, max: 15700  },
+      { rate: 0.12, max: 59850  },
+      { rate: 0.22, max: 95350  },
       { rate: 0.24, max: 182950 },
       { rate: 0.32, max: 231250 },
       { rate: 0.35, max: 578100 },
@@ -62,45 +94,50 @@ export const FEDERAL_BRACKETS = {
 
 // ── Standard Deductions ────────────────────────────────────────────────────
 export const STD_DEDUCTIONS = {
+  2025: { single: 15000, mfj: 30000, hoh: 22500 },
   2024: { single: 14600, mfj: 29200, hoh: 21900 },
   2023: { single: 13850, mfj: 27700, hoh: 20800 },
 };
 
-// ── LTCG / Qualified Dividend Thresholds 2024 ──────────────────────────────
-export const LTCG_THRESHOLDS = {
-  single: [
-    { rate: 0.00, max: 47025 },
-    { rate: 0.15, max: 518900 },
-    { rate: 0.20, max: Infinity },
-  ],
-  mfj: [
-    { rate: 0.00, max: 94050 },
-    { rate: 0.15, max: 583750 },
-    { rate: 0.20, max: Infinity },
-  ],
-  hoh: [
-    { rate: 0.00, max: 63000 },
-    { rate: 0.15, max: 551350 },
-    { rate: 0.20, max: Infinity },
-  ],
+// ── LTCG / Qualified Dividend Thresholds (year-indexed) ───────────────────
+const LTCG_BY_YEAR = {
+  2025: {
+    single: [{ rate: 0.00, max: 48350  }, { rate: 0.15, max: 533400 }, { rate: 0.20, max: Infinity }],
+    mfj:   [{ rate: 0.00, max: 96700   }, { rate: 0.15, max: 600050 }, { rate: 0.20, max: Infinity }],
+    hoh:   [{ rate: 0.00, max: 64750   }, { rate: 0.15, max: 566700 }, { rate: 0.20, max: Infinity }],
+  },
+  2024: {
+    single: [{ rate: 0.00, max: 47025  }, { rate: 0.15, max: 518900 }, { rate: 0.20, max: Infinity }],
+    mfj:   [{ rate: 0.00, max: 94050   }, { rate: 0.15, max: 583750 }, { rate: 0.20, max: Infinity }],
+    hoh:   [{ rate: 0.00, max: 63000   }, { rate: 0.15, max: 551350 }, { rate: 0.20, max: Infinity }],
+  },
+  2023: {
+    single: [{ rate: 0.00, max: 44625  }, { rate: 0.15, max: 492300 }, { rate: 0.20, max: Infinity }],
+    mfj:   [{ rate: 0.00, max: 89250   }, { rate: 0.15, max: 553850 }, { rate: 0.20, max: Infinity }],
+    hoh:   [{ rate: 0.00, max: 59750   }, { rate: 0.15, max: 523050 }, { rate: 0.20, max: Infinity }],
+  },
 };
 
-// ── FICA Constants 2024 ────────────────────────────────────────────────────
-export const FICA = {
-  SS_RATE: 0.062,
-  SS_WAGE_BASE: 168600,
-  MEDICARE_RATE: 0.0145,
-  ADD_MEDICARE_RATE: 0.009,
-  ADD_MEDICARE_THRESHOLD: { single: 200000, mfj: 250000, hoh: 200000 },
+// Keep flat export for backward compat — points to current year
+export const LTCG_THRESHOLDS = LTCG_BY_YEAR[2025];
+
+// ── FICA Constants (year-indexed) ─────────────────────────────────────────
+const FICA_BY_YEAR = {
+  2025: { SS_RATE: 0.062, SS_WAGE_BASE: 176100, MEDICARE_RATE: 0.0145, ADD_MEDICARE_RATE: 0.009, ADD_MEDICARE_THRESHOLD: { single: 200000, mfj: 250000, hoh: 200000 } },
+  2024: { SS_RATE: 0.062, SS_WAGE_BASE: 168600, MEDICARE_RATE: 0.0145, ADD_MEDICARE_RATE: 0.009, ADD_MEDICARE_THRESHOLD: { single: 200000, mfj: 250000, hoh: 200000 } },
+  2023: { SS_RATE: 0.062, SS_WAGE_BASE: 160200, MEDICARE_RATE: 0.0145, ADD_MEDICARE_RATE: 0.009, ADD_MEDICARE_THRESHOLD: { single: 200000, mfj: 250000, hoh: 200000 } },
 };
 
-// ── Contribution Limits 2024 ───────────────────────────────────────────────
-export const LIMITS = {
-  k401: 23000,
-  hsa_self: 4150,
-  hsa_family: 8300,
-  ira: 7000,
+export const FICA = FICA_BY_YEAR[2025];
+
+// ── Contribution Limits (year-indexed) ────────────────────────────────────
+const LIMITS_BY_YEAR = {
+  2025: { k401: 23500, hsa_self: 4300, hsa_family: 8550, ira: 7000 },
+  2024: { k401: 23000, hsa_self: 4150, hsa_family: 8300, ira: 7000 },
+  2023: { k401: 22500, hsa_self: 3850, hsa_family: 7750, ira: 6500 },
 };
+
+export const LIMITS = LIMITS_BY_YEAR[2025];
 
 // ── Filing Status Labels ───────────────────────────────────────────────────
 export const FILING_STATUSES = {
@@ -114,7 +151,7 @@ export const BRACKET_COLORS = [
   '#22c55e', '#84cc16', '#eab308', '#f97316', '#ef4444', '#a855f7', '#ec4899',
 ];
 
-// ── State Tax Data (2024, simplified) ──────────────────────────────────────
+// ── State Tax Data (2025, simplified) ─────────────────────────────────────
 export const STATE_TAXES = {
   NONE: { name: 'No State',           type: 'none' },
   AK:   { name: 'Alaska',             type: 'none' },
@@ -126,19 +163,19 @@ export const STATE_TAXES = {
   TX:   { name: 'Texas',              type: 'none' },
   WA:   { name: 'Washington',         type: 'none' },
   WY:   { name: 'Wyoming',            type: 'none' },
-  AZ:   { name: 'Arizona',            type: 'flat', rate: 0.025  },
-  CO:   { name: 'Colorado',           type: 'flat', rate: 0.044  },
-  GA:   { name: 'Georgia',            type: 'flat', rate: 0.0549 },
-  ID:   { name: 'Idaho',              type: 'flat', rate: 0.058  },
-  IL:   { name: 'Illinois',           type: 'flat', rate: 0.0495 },
-  IN:   { name: 'Indiana',            type: 'flat', rate: 0.0305 },
-  KY:   { name: 'Kentucky',           type: 'flat', rate: 0.04   },
-  MA:   { name: 'Massachusetts',      type: 'flat', rate: 0.05   },
-  MI:   { name: 'Michigan',           type: 'flat', rate: 0.0425 },
-  MS:   { name: 'Mississippi',        type: 'flat', rate: 0.047  },
-  NC:   { name: 'North Carolina',     type: 'flat', rate: 0.045  },
-  PA:   { name: 'Pennsylvania',       type: 'flat', rate: 0.0307 },
-  UT:   { name: 'Utah',               type: 'flat', rate: 0.0465 },
+  AZ:   { name: 'Arizona',            type: 'flat', rate: 0.025   },
+  CO:   { name: 'Colorado',           type: 'flat', rate: 0.044   },
+  GA:   { name: 'Georgia',            type: 'flat', rate: 0.0549  },
+  ID:   { name: 'Idaho',              type: 'flat', rate: 0.058   },
+  IL:   { name: 'Illinois',           type: 'flat', rate: 0.0495  },
+  IN:   { name: 'Indiana',            type: 'flat', rate: 0.0305  },
+  KY:   { name: 'Kentucky',           type: 'flat', rate: 0.04    },
+  MA:   { name: 'Massachusetts',      type: 'flat', rate: 0.05    },
+  MI:   { name: 'Michigan',           type: 'flat', rate: 0.0425  },
+  MS:   { name: 'Mississippi',        type: 'flat', rate: 0.047   },
+  NC:   { name: 'North Carolina',     type: 'flat', rate: 0.045   },
+  PA:   { name: 'Pennsylvania',       type: 'flat', rate: 0.0307  },
+  UT:   { name: 'Utah',               type: 'flat', rate: 0.0465  },
   AL:   { name: 'Alabama',            type: 'brackets', brackets: [
     { rate: 0.02, max: 500 }, { rate: 0.04, max: 3000 }, { rate: 0.05, max: Infinity }
   ]},
@@ -146,11 +183,11 @@ export const STATE_TAXES = {
     { rate: 0.02, max: 4000 }, { rate: 0.04, max: 8000 }, { rate: 0.049, max: Infinity }
   ]},
   CA:   { name: 'California',         type: 'brackets', brackets: [
-    { rate: 0.01,  max: 10099 },  { rate: 0.02,  max: 23942 },
-    { rate: 0.04,  max: 37788 },  { rate: 0.06,  max: 52455 },
-    { rate: 0.08,  max: 66295 },  { rate: 0.093, max: 338639 },
+    { rate: 0.01,  max: 10099  }, { rate: 0.02,  max: 23942  },
+    { rate: 0.04,  max: 37788  }, { rate: 0.06,  max: 52455  },
+    { rate: 0.08,  max: 66295  }, { rate: 0.093, max: 338639 },
     { rate: 0.103, max: 406364 }, { rate: 0.113, max: 677275 },
-    { rate: 0.123, max: 1000000 },{ rate: 0.133, max: Infinity },
+    { rate: 0.123, max: 1000000}, { rate: 0.133, max: Infinity },
   ]},
   CT:   { name: 'Connecticut',        type: 'brackets', brackets: [
     { rate: 0.02, max: 10000 }, { rate: 0.045, max: 50000 },
@@ -171,11 +208,11 @@ export const STATE_TAXES = {
     { rate: 0.066, max: Infinity },
   ]},
   HI:   { name: 'Hawaii',             type: 'brackets', brackets: [
-    { rate: 0.014, max: 2400 },  { rate: 0.032, max: 4800 },
-    { rate: 0.055, max: 9600 },  { rate: 0.064, max: 14400 },
+    { rate: 0.014, max: 2400  }, { rate: 0.032, max: 4800  },
+    { rate: 0.055, max: 9600  }, { rate: 0.064, max: 14400 },
     { rate: 0.068, max: 19200 }, { rate: 0.072, max: 24000 },
     { rate: 0.076, max: 36000 }, { rate: 0.079, max: 48000 },
-    { rate: 0.0825, max: 150000 },{ rate: 0.09, max: 175000 },
+    { rate: 0.0825, max: 150000 }, { rate: 0.09, max: 175000 },
     { rate: 0.10, max: 200000 }, { rate: 0.11, max: Infinity },
   ]},
   IA:   { name: 'Iowa',               type: 'brackets', brackets: [
@@ -225,11 +262,11 @@ export const STATE_TAXES = {
     { rate: 0.059, max: Infinity },
   ]},
   NY:   { name: 'New York',           type: 'brackets', brackets: [
-    { rate: 0.04, max: 8500 }, { rate: 0.045, max: 11700 },
-    { rate: 0.0525, max: 13900 }, { rate: 0.0585, max: 21400 },
-    { rate: 0.0625, max: 80650 }, { rate: 0.0685, max: 215400 },
-    { rate: 0.0965, max: 1077550 }, { rate: 0.103, max: 5000000 },
-    { rate: 0.109, max: Infinity },
+    { rate: 0.04,   max: 8500   }, { rate: 0.045,  max: 11700  },
+    { rate: 0.0525, max: 13900  }, { rate: 0.0585, max: 21400  },
+    { rate: 0.0625, max: 80650  }, { rate: 0.0685, max: 215400 },
+    { rate: 0.0965, max: 1077550}, { rate: 0.103,  max: 5000000},
+    { rate: 0.109,  max: Infinity },
   ]},
   ND:   { name: 'North Dakota',       type: 'brackets', brackets: [
     { rate: 0, max: 44725 }, { rate: 0.0195, max: 225975 }, { rate: 0.025, max: Infinity }
@@ -290,13 +327,14 @@ function applyBrackets(income, brackets) {
   return { totalTax, marginalRate, breakdown };
 }
 
-export function calcFederalOrdinary(taxableIncome, filingStatus, year = 2024) {
-  return applyBrackets(taxableIncome, FEDERAL_BRACKETS[year][filingStatus]);
+export function calcFederalOrdinary(taxableIncome, filingStatus, year = 2025) {
+  const brackets = (FEDERAL_BRACKETS[year] || FEDERAL_BRACKETS[2025])[filingStatus];
+  return applyBrackets(taxableIncome, brackets);
 }
 
-export function calcLTCGTax(ltcgAmount, ordinaryTaxableIncome, filingStatus) {
+export function calcLTCGTax(ltcgAmount, ordinaryTaxableIncome, filingStatus, year = 2025) {
   if (ltcgAmount <= 0) return { totalTax: 0, breakdown: [] };
-  const thresholds = LTCG_THRESHOLDS[filingStatus];
+  const thresholds = (LTCG_BY_YEAR[year] || LTCG_BY_YEAR[2025])[filingStatus];
   let totalTax = 0;
   let remaining = ltcgAmount;
   let stacked = ordinaryTaxableIncome;
@@ -313,8 +351,9 @@ export function calcLTCGTax(ltcgAmount, ordinaryTaxableIncome, filingStatus) {
   return { totalTax, breakdown };
 }
 
-export function calcFICA(w2Income, seIncome = 0, filingStatus = 'single') {
-  const { SS_RATE, SS_WAGE_BASE, MEDICARE_RATE, ADD_MEDICARE_RATE, ADD_MEDICARE_THRESHOLD } = FICA;
+export function calcFICA(w2Income, seIncome = 0, filingStatus = 'single', year = 2025) {
+  const { SS_RATE, SS_WAGE_BASE, MEDICARE_RATE, ADD_MEDICARE_RATE, ADD_MEDICARE_THRESHOLD } =
+    FICA_BY_YEAR[year] || FICA_BY_YEAR[2025];
   const w2SS       = Math.min(w2Income, SS_WAGE_BASE) * SS_RATE;
   const w2Medicare = w2Income * MEDICARE_RATE;
   const seNet      = seIncome * 0.9235;
@@ -335,50 +374,34 @@ export function calcFICA(w2Income, seIncome = 0, filingStatus = 'single') {
 export function calcStateTax(income, stateCode) {
   const st = STATE_TAXES[stateCode];
   if (!st || st.type === 'none') return { tax: 0, rate: 0, stateName: st?.name ?? 'None' };
-  if (st.type === 'flat') {
-    return { tax: income * st.rate, rate: st.rate, stateName: st.name };
-  }
+  if (st.type === 'flat') return { tax: income * st.rate, rate: st.rate, stateName: st.name };
   const result = applyBrackets(income, st.brackets);
-  return {
-    tax: result.totalTax,
-    rate: income > 0 ? result.totalTax / income : 0,
-    stateName: st.name,
-  };
+  return { tax: result.totalTax, rate: income > 0 ? result.totalTax / income : 0, stateName: st.name };
 }
 
 export function calcAll({
   w2Income = 0, ltcgIncome = 0, qualifiedDivs = 0, seIncome = 0,
   k401 = 0, hsa = 0, ira = 0,
   useStdDeduction = true, itemizedDeduction = 0,
-  filingStatus = 'single', stateCode = 'NONE', year = 2024,
+  filingStatus = 'single', stateCode = 'NONE', year = 2025,
 } = {}) {
   const grossIncome = w2Income + ltcgIncome + qualifiedDivs + seIncome;
 
-  // FICA
-  const fica = calcFICA(w2Income, seIncome, filingStatus);
+  const fica = calcFICA(w2Income, seIncome, filingStatus, year);
 
-  // Above-the-line deductions reduce AGI
   const preTax = Math.min(k401 + hsa + ira + fica.seDeduction, Math.max(0, w2Income + seIncome));
   const agi = Math.max(0, grossIncome - preTax);
 
-  // Standard vs itemized
-  const stdDed = (STD_DEDUCTIONS[year] || STD_DEDUCTIONS[2024])[filingStatus];
+  const stdDed = (STD_DEDUCTIONS[year] || STD_DEDUCTIONS[2025])[filingStatus];
   const deduction = useStdDeduction ? stdDed : Math.max(stdDed, itemizedDeduction);
 
-  // Ordinary taxable income (excludes LTCG/qualified divs for rate purposes)
   const ordinaryBeforeStd = Math.max(0, w2Income + seIncome - preTax);
   const ordinaryTaxable = Math.max(0, ordinaryBeforeStd - deduction);
-
-  // Preferential income (LTCG + qualified divs)
   const preferential = ltcgIncome + qualifiedDivs;
 
-  // Federal ordinary tax
   const fedOrdinary = calcFederalOrdinary(ordinaryTaxable, filingStatus, year);
+  const ltcgTax = calcLTCGTax(preferential, ordinaryTaxable, filingStatus, year);
 
-  // LTCG tax (stacked on ordinary taxable income)
-  const ltcgTax = calcLTCGTax(preferential, ordinaryTaxable, filingStatus);
-
-  // State tax (on total AGI minus deduction, simplified)
   const stateTaxBase = Math.max(0, agi - deduction);
   const stateTax = calcStateTax(stateTaxBase, stateCode);
 
@@ -396,17 +419,16 @@ export function calcAll({
   };
 }
 
-// ── Utility: generate marginal vs effective rate curve data ────────────────
-export function generateRateCurve(filingStatus, maxIncome, stateCode = 'NONE', year = 2024, steps = 80) {
+export function generateRateCurve(filingStatus, maxIncome, stateCode = 'NONE', year = 2025, steps = 80) {
   const results = [];
   for (let i = 0; i <= steps; i++) {
     const income = Math.round((i / steps) * maxIncome);
     if (income === 0) { results.push({ income, marginal: 0, effective: 0, combined: 0 }); continue; }
-    const std = (STD_DEDUCTIONS[year] || STD_DEDUCTIONS[2024])[filingStatus];
+    const std = (STD_DEDUCTIONS[year] || STD_DEDUCTIONS[2025])[filingStatus];
     const taxable = Math.max(0, income - std);
     const fed = calcFederalOrdinary(taxable, filingStatus, year);
     const state = calcStateTax(taxable, stateCode);
-    const fica = calcFICA(income, 0, filingStatus);
+    const fica = calcFICA(income, 0, filingStatus, year);
     const effectiveFed = fed.totalTax / income;
     const effectiveAll = (fed.totalTax + state.tax + fica.totalFICA) / income;
     results.push({
@@ -419,11 +441,10 @@ export function generateRateCurve(filingStatus, maxIncome, stateCode = 'NONE', y
   return results;
 }
 
-// ── Raise simulator ────────────────────────────────────────────────────────
 export function calcRaise(baseInputs, raiseAmount) {
   const base   = calcAll(baseInputs);
   const raised = calcAll({ ...baseInputs, w2Income: (baseInputs.w2Income || 0) + raiseAmount });
-  const extraTax  = raised.totalTax - base.totalTax;
+  const extraTax   = raised.totalTax - base.totalTax;
   const keepAmount = raiseAmount - extraTax;
   return {
     grossRaise: raiseAmount, extraTax,
@@ -433,10 +454,9 @@ export function calcRaise(baseInputs, raiseAmount) {
   };
 }
 
-// ── Marginal next-$1k ──────────────────────────────────────────────────────
 export function calcMarginalDollar(baseInputs, amount = 1000) {
-  const base  = calcAll(baseInputs);
-  const more  = calcAll({ ...baseInputs, w2Income: (baseInputs.w2Income || 0) + amount });
+  const base = calcAll(baseInputs);
+  const more = calcAll({ ...baseInputs, w2Income: (baseInputs.w2Income || 0) + amount });
   const extraTax = more.totalTax - base.totalTax;
   return {
     extraTax, keepAmount: amount - extraTax,
